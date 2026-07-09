@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   provider: ^6.1.0                   # 状态管理
   http: ^1.2.0                      # HTTP 请求（连接后端）
+  fl_chart: ^0.69.0                 # 统计图表
   shared_preferences: ^2.3.0         # 本地存储（设置和统计）
   flutter_local_notifications: ^18.0.0  # 本地通知
   audioplayers: ^6.1.0              # 音频播放（计时结束提示音）
@@ -63,9 +64,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # 计时结束提示音
+  # 提示音和白噪音
   assets:
-    - assets/sounds/timer_end.wav
+    - assets/sounds/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -25,8 +25,9 @@ class TimerProvider extends ChangeNotifier {
   int _shortBreakMinutes = 5;
   int _longBreakMinutes = 15;
   int _longBreakInterval = 4;
+  bool _autoStartNext = false;
 
-  // 回调：计时完成时通知外部（用于播放声音、发通知）
+  // 回调
   VoidCallback? onTimerFinished;
 
   // --- Getter ---
@@ -82,13 +83,14 @@ class TimerProvider extends ChangeNotifier {
     required int shortBreakMinutes,
     required int longBreakMinutes,
     required int longBreakInterval,
+    required bool autoStartNext,
   }) {
     _focusMinutes = focusMinutes;
     _shortBreakMinutes = shortBreakMinutes;
     _longBreakMinutes = longBreakMinutes;
     _longBreakInterval = longBreakInterval;
+    _autoStartNext = autoStartNext;
 
-    // 如果当前处于空闲状态，用新设置更新倒计时
     if (_state == TimerState.idle) {
       _totalSeconds = _focusMinutes * 60;
       _remainingSeconds = _totalSeconds;
@@ -216,10 +218,19 @@ class TimerProvider extends ChangeNotifier {
     _remainingSeconds = _totalSeconds;
     _state = TimerState.finished;
 
-    // 触发回调（播放声音、发通知等）
+    // 触发回调
     onTimerFinished?.call();
 
     notifyListeners();
+
+    // 自动流转：延迟 1.5 秒后自动开始下一阶段
+    if (_autoStartNext) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (_state == TimerState.finished) {
+          confirmFinished();
+        }
+      });
+    }
   }
 
   /// 用户确认完成 → 进入下一阶段并自动开始

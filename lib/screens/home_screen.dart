@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/timer_mode.dart';
 import '../providers/timer_provider.dart';
-import '../providers/settings_provider.dart';
+import '../providers/settings_provider.dart' show SettingsProvider, WhiteNoise;
 import '../providers/stats_provider.dart';
 import '../providers/task_provider.dart';
 import '../providers/theme_provider.dart';
@@ -28,6 +28,29 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _notificationService.initialize();
+    // 同步设置到计时器
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncSettings();
+    });
+  }
+
+  void _syncSettings() {
+    final settings = context.read<SettingsProvider>();
+    context.read<TimerProvider>().updateSettings(
+      focusMinutes: settings.focusMinutes,
+      shortBreakMinutes: settings.shortBreakMinutes,
+      longBreakMinutes: settings.longBreakMinutes,
+      longBreakInterval: settings.longBreakInterval,
+      autoStartNext: settings.autoStartNext,
+    );
+  }
+
+  void _startNoiseIfNeeded() {
+    final settings = context.read<SettingsProvider>();
+    final timer = context.read<TimerProvider>();
+    if (settings.whiteNoise != WhiteNoise.none && timer.mode == TimerMode.focus) {
+      _audioService.startWhiteNoise(settings.whiteNoise.name);
+    }
   }
 
   void _onTimerFinished() {
@@ -38,8 +61,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final isFocus = mode == TimerMode.focus;
 
     if (settings.soundEnabled) {
-      _audioService.playTimerEndSound();
+      _audioService.playTimerEndSound(soundType: settings.soundType.name);
     }
+
+    // 停止白噪音（专注结束时）
+    _audioService.stopWhiteNoise();
 
     if (settings.notificationEnabled) {
       final title = isFocus ? '专注完成！☕' : '休息结束！💪';
@@ -217,14 +243,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ControlButtons(
               state: state,
               color: modeColor,
-              onStart: () => timerProvider.start(),
-              onPause: () => timerProvider.pause(),
-              onResume: () => timerProvider.start(),
+              onStart: () {
+                timerProvider.start();
+                _startNoiseIfNeeded();
+              },
+              onPause: () {
+                timerProvider.pause();
+                _audioService.stopWhiteNoise();
+              },
+              onResume: () {
+                timerProvider.start();
+                _startNoiseIfNeeded();
+              },
               onSkip: () {
                 timerProvider.skip();
                 _onTimerFinished();
               },
-              onReset: () => timerProvider.reset(),
+              onReset: () {
+                timerProvider.reset();
+                _audioService.stopWhiteNoise();
+              },
             ),
             const SizedBox(height: 32),
           ],

@@ -7,19 +7,17 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 
 
 def _get_settings(db: Session) -> Setting:
-    """获取设置（单行），不存在则创建"""
-    settings = db.query(Setting).first()
-    if settings is None:
-        settings = Setting(id=1)
-        db.add(settings)
+    s = db.query(Setting).first()
+    if s is None:
+        s = Setting(id=1)
+        db.add(s)
         db.commit()
-        db.refresh(settings)
-    return settings
+        db.refresh(s)
+    return s
 
 
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
-    """读取当前设置"""
     s = _get_settings(db)
     return {
         "focusMinutes": s.focus_minutes,
@@ -28,6 +26,9 @@ def get_settings(db: Session = Depends(get_db)):
         "longBreakInterval": s.long_break_interval,
         "soundEnabled": s.sound_enabled,
         "notificationEnabled": s.notification_enabled,
+        "autoStartNext": s.auto_start_next,
+        "soundType": s.sound_type,
+        "whiteNoise": s.white_noise,
     }
 
 
@@ -39,21 +40,19 @@ def update_settings(
     longBreakInterval: int = None,
     soundEnabled: bool = None,
     notificationEnabled: bool = None,
+    autoStartNext: bool = None,
+    soundType: str = None,
+    whiteNoise: str = None,
     db: Session = Depends(get_db),
 ):
-    """更新设置（只传需要改的字段）"""
     s = _get_settings(db)
-    if focusMinutes is not None:
-        s.focus_minutes = focusMinutes
-    if shortBreakMinutes is not None:
-        s.short_break_minutes = shortBreakMinutes
-    if longBreakMinutes is not None:
-        s.long_break_minutes = longBreakMinutes
-    if longBreakInterval is not None:
-        s.long_break_interval = longBreakInterval
-    if soundEnabled is not None:
-        s.sound_enabled = soundEnabled
-    if notificationEnabled is not None:
-        s.notification_enabled = notificationEnabled
+    for key, val in {
+        "focus_minutes": focusMinutes, "short_break_minutes": shortBreakMinutes,
+        "long_break_minutes": longBreakMinutes, "long_break_interval": longBreakInterval,
+        "sound_enabled": soundEnabled, "notification_enabled": notificationEnabled,
+        "auto_start_next": autoStartNext, "sound_type": soundType, "white_noise": whiteNoise,
+    }.items():
+        if val is not None:
+            setattr(s, key, val)
     db.commit()
     return {"message": "设置已更新"}

@@ -21,6 +21,9 @@ class Setting(Base):
     long_break_interval = Column(Integer, default=4)
     sound_enabled = Column(Boolean, default=True)
     notification_enabled = Column(Boolean, default=True)
+    auto_start_next = Column(Boolean, default=False, comment="计时结束自动开始下一阶段")
+    sound_type = Column(String(20), default='bell', comment="提示音类型: bell/chime/piano")
+    white_noise = Column(String(20), default='none', comment="白噪音: none/rain/forest/cafe")
     updated_at = Column(DateTime, default=_now, onupdate=_now)
 
 

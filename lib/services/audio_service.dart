@@ -1,24 +1,63 @@
 import 'package:audioplayers/audioplayers.dart';
 
-/// 音频服务 —— 播放计时结束提示音
+/// 音频服务 —— 提示音 + 白噪音
 class AudioService {
   final AudioPlayer _player = AudioPlayer();
+  final AudioPlayer _noisePlayer = AudioPlayer();
+  bool _isNoisePlaying = false;
+
+  bool get isNoisePlaying => _isNoisePlaying;
 
   /// 播放计时结束提示音
-  /// 如果找不到音频文件，静默失败（不影响核心功能）
-  Future<void> playTimerEndSound() async {
+  /// [soundType]: bell / chime / piano
+  Future<void> playTimerEndSound({String soundType = 'bell'}) async {
     try {
-      await _player.play(
-        AssetSource('sounds/timer_end.wav'),
-      );
-    } catch (e) {
-      // 音频文件不存在或播放失败时静默处理
-      // 通知仍然会弹出，不影响用户体验
+      final path = _soundPath(soundType);
+      await _player.play(AssetSource(path));
+    } catch (_) {}
+  }
+
+  /// 开始播放白噪音（循环）
+  /// [noiseType]: rain / forest / cafe
+  Future<void> startWhiteNoise(String noiseType) async {
+    if (_isNoisePlaying) await stopWhiteNoise();
+    try {
+      await _noisePlayer.setReleaseMode(ReleaseMode.loop);
+      await _noisePlayer.play(AssetSource(_noisePath(noiseType)));
+      _isNoisePlaying = true;
+    } catch (_) {}
+  }
+
+  /// 停止白噪音
+  Future<void> stopWhiteNoise() async {
+    try {
+      await _noisePlayer.stop();
+    } catch (_) {}
+    _isNoisePlaying = false;
+  }
+
+  /// 根据类型返回提示音路径
+  String _soundPath(String type) {
+    switch (type) {
+      case 'bell':  return 'sounds/bell.wav';
+      case 'chime': return 'sounds/chime.wav';
+      case 'piano': return 'sounds/piano.wav';
+      default:      return 'sounds/bell.wav';
     }
   }
 
-  /// 释放播放器资源
+  /// 根据类型返回白噪音路径
+  String _noisePath(String type) {
+    switch (type) {
+      case 'rain':   return 'sounds/rain.wav';
+      case 'forest': return 'sounds/forest.wav';
+      case 'cafe':   return 'sounds/cafe.wav';
+      default:       return 'sounds/rain.wav';
+    }
+  }
+
   void dispose() {
     _player.dispose();
+    _noisePlayer.dispose();
   }
 }
