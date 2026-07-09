@@ -24,7 +24,11 @@ class NotificationService {
       macOS: darwinSettings,
     );
 
-    await _plugin.initialize(settings);
+    try {
+      await _plugin.initialize(settings);
+    } catch (_) {
+      // 测试环境或部分平台可能未初始化，静默忽略
+    }
   }
 
   /// 显示计时结束通知

@@ -1,74 +1,73 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-/// 圆形进度计时器 —— 用 CustomPainter 画圆弧 + 中间显示时间
+/// 圆形进度计时器 —— 渐变描边 + 阴影 + 时间显示
 class CircularTimer extends StatelessWidget {
-  final double progress;   // 0.0 ~ 1.0
-  final String timeText;   // "MM:SS"
-  final String modeLabel;  // "专注中" / "短休息" / "长休息"
+  final double progress;
+  final int remainingSeconds;
   final Color color;
+  final double size;
 
   const CircularTimer({
     super.key,
     required this.progress,
-    required this.timeText,
-    required this.modeLabel,
+    required this.remainingSeconds,
     required this.color,
+    this.size = 260,
   });
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size.width * 0.7;
-    // 限制最大最小尺寸，适配桌面和手机
-    final diameter = size.clamp(200.0, 350.0);
+    final minutes = remainingSeconds ~/ 60;
+    final seconds = remainingSeconds % 60;
+    final timeText =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final strokeWidth = size * 0.045;
 
-    return SizedBox(
-      width: diameter,
-      height: diameter,
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withAlpha(35),
+            blurRadius: 24,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // 背景圆环（灰色底圈）
+          // 背景圆环
           CustomPaint(
-            size: Size(diameter, diameter),
-            painter: _CircularProgressPainter(
-              progress: 1.0, // 满圈
-              color: Colors.grey.shade200,
-              strokeWidth: 12,
+            size: Size(size, size),
+            painter: _RingPainter(
+              progress: 1.0,
+              color: Colors.grey.withAlpha(30),
+              strokeWidth: strokeWidth,
             ),
           ),
-          // 进度圆弧（彩色）
+          // 渐变进度圆环
           CustomPaint(
-            size: Size(diameter, diameter),
-            painter: _CircularProgressPainter(
+            size: Size(size, size),
+            painter: _GradientRingPainter(
               progress: progress,
               color: color,
-              strokeWidth: 12,
+              strokeWidth: strokeWidth,
             ),
           ),
-          // 中间文字
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                modeLabel,
-                style: TextStyle(
-                  fontSize: 18,
-                  color: color,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                timeText,
-                style: TextStyle(
-                  fontSize: diameter / 5.5,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
+          // 时间文字
+          Text(
+            timeText,
+            style: TextStyle(
+              fontSize: size * 0.2,
+              fontWeight: FontWeight.w300,
+              letterSpacing: 2,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+              fontFamily: 'monospace',
+            ),
           ),
         ],
       ),
@@ -76,41 +75,67 @@ class CircularTimer extends StatelessWidget {
   }
 }
 
-/// 自定义画笔 —— 画圆弧
-class _CircularProgressPainter extends CustomPainter {
+/// 纯色圆环（背景）
+class _RingPainter extends CustomPainter {
   final double progress;
   final Color color;
   final double strokeWidth;
 
-  _CircularProgressPainter({
-    required this.progress,
-    required this.color,
-    required this.strokeWidth,
-  });
+  _RingPainter({required this.progress, required this.color, required this.strokeWidth});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - strokeWidth) / 2;
-
+    final radius = size.width / 2 - strokeWidth;
     final paint = Paint()
       ..color = color
-      ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    // 从顶部 (-pi/2) 开始，顺时针画圆弧
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,                          // 起始角度（12 点钟方向）
-      2 * pi * progress.clamp(0.0, 1.0), // 扫描角度
+      -pi / 2,
+      progress * 2 * pi,
       false,
       paint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _CircularProgressPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
+  bool shouldRepaint(covariant _RingPainter o) => progress != o.progress;
+}
+
+/// 渐变圆环（进度）
+class _GradientRingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+
+  _GradientRingPainter({required this.progress, required this.color, required this.strokeWidth});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - strokeWidth;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final gradient = SweepGradient(
+      colors: [color.withAlpha(180), color, color.withAlpha(200)],
+      stops: const [0.0, 0.5, 1.0],
+    );
+
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -pi / 2, progress * 2 * pi, false, paint);
   }
+
+  @override
+  bool shouldRepaint(covariant _GradientRingPainter o) =>
+      progress != o.progress || color != o.color;
 }
